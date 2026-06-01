@@ -1,0 +1,30 @@
+pipeline: sequential          # direct | sequential | parallel | optimal
+
+data:
+  queries_path: data/queries.tsv
+  corpus_path: data/corpus.jsonl
+
+retriever:
+  # For sequential: single entry. For parallel: list of entries.
+  - name: bm25
+    run_path: runs/bm25.trec
+    topk: 100
+
+generator:
+  model_name_or_path: meta-llama/Llama-3.1-8B-Instruct
+  temperature: 0.0
+  top_p: 1.0
+  max_tokens: 512
+  dtype: bfloat16
+  gpu_memory_utilization: 0.9
+  num_gpus: 1
+  max_model_len: 10240
+  system_message: "You are a helpful assistant. Answer the question using only the provided documents."
+
+selector:
+  type: top_k              # top_k | greedy_nugget
+  k: 5
+  nugget_qrel_path: null   # required when type=greedy_nugget
+
+output:
+  path: outputs/responses.jsonl

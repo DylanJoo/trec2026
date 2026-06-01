@@ -1,0 +1,99 @@
+import argparse
+import json
+import os
+import yaml
+from src.data import load_corpus, load_queries
+
+
+def load_config(path: str, overrides: list[str]) -> dict:
+    with open(path) as f:
+        cfg = yaml.safe_load(f)
+    for override in overrides:
+        key, _, value = override.partition("=")
+        keys = key.split(".")
+        node = cfg
+        for k in keys[:-1]:
+            node = node.setdefault(k, {})
+        node[keys[-1]] = yaml.safe_load(value)
+    return cfg
+
+
+def build_selector(cfg: dict):
+    sel_cfg = cfg["selector"]
+    if sel_cfg["type"] == "top_k":
+        from src.context_selector.top_k import TopKSelector
+        return TopKSelector(k=sel_cfg["k"])
+    elif sel_cfg["type"] == "greedy_nugget":
+        from src.context_selector.greedy_nugget import GreedyNuggetSelector
+        return GreedyNuggetSelector(
+            nugget_qrel_path=sel_cfg["nugget_qrel_path"],
+            max_docs=sel_cfg["k"],
+        )
+    raise ValueError(f"Unknown selector type: {sel_cfg['type']}")
+
+
+def build_generator(cfg: dict):
+    from src.generator.vllm_gen import VLLMGenerator
+    return VLLMGenerator(**cfg["generator"])
+
+
+def build_retriever(entry: dict):
+    from src.retriever.run_file import RunFileRetriever
+    return RunFileRetriever(
+        run_path=entry["run_path"],
+        topk=entry.get("topk", 100),
+        name=entry.get("name", "run"),
+    )
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="config/default.yaml")
+    parser.add_argument("overrides", nargs="*", help="key=value overrides, e.g. pipeline=direct")
+    args = parser.parse_args()
+
+    cfg = load_config(args.config, args.overrides)
+    mode = cfg["pipeline"]
+
+    queries = load_queries(cfg["data"]["queries_path"])
+    generator = build_generator(cfg)
+    selector = build_selector(cfg)
+
+    if mode == "direct":
+        from src.pipeline.direct import DirectPipeline
+        pipeline = DirectPipeline(generator=generator)
+        responses = pipeline.run(queries)
+
+    elif mode == "sequential":
+        corpus = load_corpus(cfg["data"]["corpus_path"])
+        retriever = build_retriever(cfg["retriever"][0])
+        from src.pipeline.sequential import SequentialPipeline
+        pipeline = SequentialPipeline(retriever=retriever, selector=selector, generator=generator)
+        responses = pipeline.run(queries, corpus)
+
+    elif mode in ("parallel", "optimal"):
+        corpus = load_corpus(cfg["data"]["corpus_path"])
+        retrievers = [build_retriever(e) for e in cfg["retriever"]]
+        from src.pipeline.parallel import ParallelPipeline
+        pipeline = ParallelPipeline(
+            retrievers=retrievers,
+            selector=selector,
+            generator=generator,
+            rrf_k=cfg.get("rrf_k", 60),
+        )
+        responses = pipeline.run(queries, corpus)
+
+    else:
+        raise ValueError(f"Unknown pipeline mode: {mode}")
+
+    out_path = cfg["output"]["path"]
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, "w") as f:
+        for qid, text in responses.items():
+            f.write(json.dumps({"qid": qid, "response": text}) + "\n")
+
+    print(f"Wrote {len(responses)} responses to {out_path}")
+
+
+if __name__ == "__main__":
+    main()
