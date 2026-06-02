@@ -19,18 +19,32 @@ def load_config(path: str, overrides: list[str]) -> dict:
     return cfg
 
 
-def build_selector(cfg: dict):
+def build_selector(cfg: dict, nugget_qrel_path: str = None):
     sel_cfg = cfg["selector"]
-    if sel_cfg["type"] == "top_k":
+    sel_type = sel_cfg["type"]
+
+    if sel_type == "top_k":
         from src.context_selector.top_k import TopKSelector
         return TopKSelector(k=sel_cfg["k"])
-    elif sel_cfg["type"] == "greedy_nugget":
-        from src.context_selector.greedy_nugget import GreedyNuggetSelector
-        return GreedyNuggetSelector(
-            nugget_qrel_path=sel_cfg["nugget_qrel_path"],
-            max_docs=sel_cfg["k"],
-        )
-    raise ValueError(f"Unknown selector type: {sel_cfg['type']}")
+
+    # Nugget-based selectors: qrel path comes from selector config or caller (optimal mode)
+    qrel_path = sel_cfg.get("nugget_qrel_path") or nugget_qrel_path
+    if not qrel_path:
+        raise ValueError(f"selector.type={sel_type} requires a nugget_qrel_path")
+
+    from src.context_selector.greedy_nugget import (
+        GreedyBudgetSelector,
+        GreedyCompleteSelector,
+        OracleAllSelector,
+    )
+    if sel_type == "greedy_budget":
+        return GreedyBudgetSelector(nugget_qrel_path=qrel_path, max_docs=sel_cfg["k"])
+    elif sel_type == "greedy_complete":
+        return GreedyCompleteSelector(nugget_qrel_path=qrel_path)
+    elif sel_type == "oracle_all":
+        return OracleAllSelector(nugget_qrel_path=qrel_path)
+
+    raise ValueError(f"Unknown selector type: {sel_type}")
 
 
 def build_generator(cfg: dict):
@@ -90,8 +104,9 @@ def main():
         nugget_qrel_paths = {
             qid: nugget_qrel_pattern.format(qid=qid) for qid in queries
         }
+        selector_factory = lambda qrel_path: build_selector(cfg, nugget_qrel_path=qrel_path)
         from src.pipeline.optimal import OptimalPipeline
-        pipeline = OptimalPipeline(selector=selector, generator=generator)
+        pipeline = OptimalPipeline(selector_factory=selector_factory, generator=generator)
         responses = pipeline.run(queries, nugget_qrel_paths, corpus)
 
     else:
