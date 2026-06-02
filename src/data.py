@@ -74,3 +74,14 @@ def load_nugget_qrels(path: str) -> dict[str, set[str]]:
             if len(parts) >= 3 and int(parts[2]) > 0:
                 doc_nuggets[parts[0]].add(parts[1])
     return doc_nuggets
+
+
+def get_oracle_docs(nugget_qrel_path: str) -> set[str]:
+    """Extract all unique docids from a nugget qrel file."""
+    docs = set()
+    with open(nugget_qrel_path) as f:
+        for line in f:
+            parts = line.strip().split()
+            if len(parts) >= 3 and int(parts[2]) > 0:
+                docs.add(parts[0])
+    return docs

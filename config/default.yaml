@@ -3,6 +3,7 @@ pipeline: sequential          # direct | sequential | parallel | optimal
 data:
   queries_path: data/queries.tsv
   corpus_path: data/corpus.jsonl
+  nugget_qrel_pattern: data/nuggets/{qid}.qrel  # only for optimal mode
 
 retriever:
   # For sequential: single entry. For parallel: list of entries.
@@ -22,9 +23,9 @@ generator:
   system_message: "You are a helpful assistant. Answer the question using only the provided documents."
 
 selector:
-  type: top_k              # top_k | greedy_nugget
+  type: top_k              # top_k (sequential/parallel) | greedy_nugget (optimal)
   k: 5
-  nugget_qrel_path: null   # required when type=greedy_nugget
+  nugget_qrel_path: null   # required when type=greedy_nugget (optimal mode only)
 
 output:
   path: outputs/responses.jsonl

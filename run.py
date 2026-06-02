@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import glob
 import yaml
 from src.data import load_corpus, load_queries
 
@@ -71,7 +72,7 @@ def main():
         pipeline = SequentialPipeline(retriever=retriever, selector=selector, generator=generator)
         responses = pipeline.run(queries, corpus)
 
-    elif mode in ("parallel", "optimal"):
+    elif mode == "parallel":
         corpus = load_corpus(cfg["data"]["corpus_path"])
         retrievers = [build_retriever(e) for e in cfg["retriever"]]
         from src.pipeline.parallel import ParallelPipeline
@@ -82,6 +83,16 @@ def main():
             rrf_k=cfg.get("rrf_k", 60),
         )
         responses = pipeline.run(queries, corpus)
+
+    elif mode == "optimal":
+        corpus = load_corpus(cfg["data"]["corpus_path"])
+        nugget_qrel_pattern = cfg["data"].get("nugget_qrel_pattern", "data/nuggets/{qid}.qrel")
+        nugget_qrel_paths = {
+            qid: nugget_qrel_pattern.format(qid=qid) for qid in queries
+        }
+        from src.pipeline.optimal import OptimalPipeline
+        pipeline = OptimalPipeline(selector=selector, generator=generator)
+        responses = pipeline.run(queries, nugget_qrel_paths, corpus)
 
     else:
         raise ValueError(f"Unknown pipeline mode: {mode}")
