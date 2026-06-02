@@ -12,6 +12,8 @@ class Hit:
     score: float
     rank: int = -1
     content: str = ""
+    title: str = ""
+    meta: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -20,6 +22,7 @@ class Result:
     query: str
     hits: list[Hit] = field(default_factory=list)
     response: Optional[str] = None
+    meta: dict = field(default_factory=dict)
 
     def sort(self):
         self.hits.sort(key=lambda h: h.score, reverse=True)
@@ -30,25 +33,40 @@ class Result:
         return self.hits[:k]
 
 
-def load_corpus(path: str) -> dict[str, str]:
-    """Load a JSONL corpus: {docid, contents} per line."""
+def load_corpus(path: str) -> dict[str, dict]:
+    """Load a unified JSONL corpus → {docid: {text, title, url, meta}}."""
     import json
     corpus = {}
     with open(path) as f:
         for line in f:
             doc = json.loads(line)
-            corpus[doc["docid"]] = doc.get("contents", doc.get("text", ""))
+            corpus[doc["docid"]] = {
+                "text": doc.get("text", doc.get("contents", doc.get("segment", doc.get("abstract", "")))),
+                "title": doc.get("title", ""),
+                "url": doc.get("url", ""),
+                "meta": doc.get("meta", {}),
+            }
     return corpus
 
 
-def load_queries(path: str) -> dict[str, str]:
-    """Load a TSV queries file: qid<TAB>text."""
+def load_queries(path: str) -> dict[str, dict]:
+    """Load a unified JSONL queries file → {qid: {query, meta}}.
+    Also accepts legacy TSV format: qid<TAB>query.
+    """
+    import json
     queries = {}
     with open(path) as f:
         for line in f:
-            parts = line.strip().split("\t", 1)
-            if len(parts) == 2:
-                queries[parts[0]] = parts[1]
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("{"):
+                q = json.loads(line)
+                queries[str(q["qid"])] = {"query": q["query"], "meta": q.get("meta", {})}
+            else:
+                parts = line.split("\t", 1)
+                if len(parts) == 2:
+                    queries[parts[0]] = {"query": parts[1], "meta": {}}
     return queries
 
 

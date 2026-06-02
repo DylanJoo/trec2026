@@ -10,11 +10,19 @@ class RunFileRetriever(BaseRetriever):
         self.topk = topk
         self.name = name
 
-    def retrieve(self, queries: dict[str, str], corpus: dict[str, str]) -> dict[str, Result]:
+    def retrieve(self, queries: dict[str, dict], corpus: dict[str, dict]) -> dict[str, Result]:
         results = {}
-        for qid, query in queries.items():
+        for qid, q in queries.items():
             hits = []
             for rank, (docid, score) in enumerate(self.run.get(qid, []), start=1):
-                hits.append(Hit(docid=docid, score=score, rank=rank, content=corpus.get(docid, "")))
-            results[qid] = Result(qid=qid, query=query, hits=hits)
+                doc = corpus.get(docid, {})
+                hits.append(Hit(
+                    docid=docid,
+                    score=score,
+                    rank=rank,
+                    content=doc.get("text", "") if isinstance(doc, dict) else doc,
+                    title=doc.get("title", "") if isinstance(doc, dict) else "",
+                    meta=doc.get("meta", {}) if isinstance(doc, dict) else {},
+                ))
+            results[qid] = Result(qid=qid, query=q["query"], hits=hits)
         return results

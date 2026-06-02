@@ -1,25 +1,13 @@
 import uuid
 import asyncio
+from typing import Callable, Optional
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.sampling_params import SamplingParams
 from transformers import AutoTokenizer
 from src.data import Hit, Result
 from src.generator.base import BaseGenerator
-
-
-RAG_SYSTEM = "You are a helpful assistant. Answer the question using only the provided documents."
-
-
-def _build_prompt(tokenizer, query: str, hits: list[Hit], system: str) -> str:
-    docs_text = "\n\n".join(
-        f"[{i+1}] {h.content}" for i, h in enumerate(hits)
-    )
-    messages = [
-        {"role": "system", "content": system},
-        {"role": "user", "content": f"Documents:\n{docs_text}\n\nQuestion: {query}"},
-    ]
-    return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+from src.generator.prompt import get_prompt_builder
 
 
 class VLLMGenerator(BaseGenerator):
@@ -27,6 +15,7 @@ class VLLMGenerator(BaseGenerator):
     def __init__(
         self,
         model_name_or_path: str,
+        track: str = "rag",               # selects default prompt builder
         temperature: float = 0.0,
         top_p: float = 1.0,
         max_tokens: int = 512,
@@ -34,7 +23,7 @@ class VLLMGenerator(BaseGenerator):
         gpu_memory_utilization: float = 0.9,
         num_gpus: int = 1,
         max_model_len: int = 10240,
-        system_message: str = RAG_SYSTEM,
+        prompt_builder: Optional[Callable] = None,  # override per-track default
     ):
         args = AsyncEngineArgs(
             model=model_name_or_path,
@@ -44,9 +33,11 @@ class VLLMGenerator(BaseGenerator):
             max_model_len=max_model_len,
         )
         self.engine = AsyncLLMEngine.from_engine_args(args)
-        self.sampling_params = SamplingParams(temperature=temperature, top_p=top_p, max_tokens=max_tokens)
+        self.sampling_params = SamplingParams(
+            temperature=temperature, top_p=top_p, max_tokens=max_tokens
+        )
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        self.system_message = system_message
+        self.prompt_builder = prompt_builder or get_prompt_builder(track)
 
         try:
             self.loop = asyncio.get_running_loop()
@@ -54,9 +45,15 @@ class VLLMGenerator(BaseGenerator):
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
 
+    def _format_prompt(self, result: Result, hits: list[Hit]) -> str:
+        messages = self.prompt_builder(result.query, hits, result.meta)
+        return self.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+
     def generate(self, results: list[Result], contexts: dict[str, list[Hit]]) -> dict[str, str]:
         prompts = {
-            r.qid: _build_prompt(self.tokenizer, r.query, contexts.get(r.qid, []), self.system_message)
+            r.qid: self._format_prompt(r, contexts.get(r.qid, []))
             for r in results
         }
         return self.loop.run_until_complete(self._agenerate(prompts))

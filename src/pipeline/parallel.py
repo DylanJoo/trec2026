@@ -18,7 +18,7 @@ class ParallelPipeline:
         self.generator = generator
         self.rrf_k = rrf_k
 
-    def run(self, queries: dict[str, str], corpus: dict[str, str]) -> dict[str, str]:
+    def run(self, queries: dict[str, dict], corpus: dict[str, dict]) -> dict[str, str]:
         all_results = [r.retrieve(queries, corpus) for r in self.retrievers]
         fused = reciprocal_rank_fusion(all_results, k=self.rrf_k)
         contexts = {qid: self.selector.select(result) for qid, result in fused.items()}

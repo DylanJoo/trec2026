@@ -10,7 +10,7 @@ class SequentialPipeline:
         self.selector = selector
         self.generator = generator
 
-    def run(self, queries: dict[str, str], corpus: dict[str, str]) -> dict[str, str]:
+    def run(self, queries: dict[str, dict], corpus: dict[str, dict]) -> dict[str, str]:
         results = self.retriever.retrieve(queries, corpus)
         contexts = {qid: self.selector.select(result) for qid, result in results.items()}
         return self.generator.generate(list(results.values()), contexts)
