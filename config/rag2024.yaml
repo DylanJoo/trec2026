@@ -1,38 +1,14 @@
-pipeline: sequential          # direct | sequential | parallel | optimal
-
 data:
   queries_path: data/rag2024/topics/queries_unified.jsonl
-  corpus_path: data/rag2024/corpus/corpus_unified.jsonl
-  nugget_qrel_pattern: data/rag2024/nuggets/{qid}.qrel  # optimal mode only
-
-retriever:
-  - name: bm25
-    run_path: data/rag2024/runs/bm25.trec
-    topk: 100
-  # Uncomment to add a second retriever for parallel mode:
-  # - name: cover
-  #   run_path: data/rag2024/runs/cover.trec
-  #   topk: 100
+  responses_path: outputs/rag2024/responses.jsonl
 
 generator:
   model_name_or_path: meta-llama/Llama-3.1-8B-Instruct
   track: rag
   temperature: 0.0
   top_p: 1.0
-  max_tokens: 512          # RAG answers capped at ~400 words
+  max_tokens: 512
   dtype: bfloat16
   gpu_memory_utilization: 0.9
   num_gpus: 1
   max_model_len: 10240
-
-selector:
-  # sequential/parallel: top_k
-  # optimal: greedy_budget | greedy_complete | oracle_all
-  type: top_k
-  k: 5
-  nugget_qrel_path: null
-
-rrf_k: 60
-
-output:
-  path: outputs/rag2024/responses.jsonl

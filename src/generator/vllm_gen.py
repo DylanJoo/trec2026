@@ -1,21 +1,20 @@
 import uuid
 import asyncio
-from typing import Callable, Optional
+from typing import Callable
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.sampling_params import SamplingParams
 from transformers import AutoTokenizer
 from src.data import Hit, Result
 from src.generator.base import BaseGenerator
-from src.generator.prompt import get_prompt_builder
 
 
 class VLLMGenerator(BaseGenerator):
+    """Generation via an in-process AsyncLLMEngine (on-the-fly, no server needed)."""
 
     def __init__(
         self,
         model_name_or_path: str,
-        track: str = "rag",               # selects default prompt builder
         temperature: float = 0.0,
         top_p: float = 1.0,
         max_tokens: int = 512,
@@ -23,7 +22,6 @@ class VLLMGenerator(BaseGenerator):
         gpu_memory_utilization: float = 0.9,
         num_gpus: int = 1,
         max_model_len: int = 10240,
-        prompt_builder: Optional[Callable] = None,  # override per-track default
     ):
         args = AsyncEngineArgs(
             model=model_name_or_path,
@@ -34,10 +32,13 @@ class VLLMGenerator(BaseGenerator):
         )
         self.engine = AsyncLLMEngine.from_engine_args(args)
         self.sampling_params = SamplingParams(
-            temperature=temperature, top_p=top_p, max_tokens=max_tokens
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens,
+            skip_special_tokens=False,
+            min_tokens=1,
         )
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        self.prompt_builder = prompt_builder or get_prompt_builder(track)
 
         try:
             self.loop = asyncio.get_running_loop()
@@ -45,27 +46,32 @@ class VLLMGenerator(BaseGenerator):
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
 
-    def _format_prompt(self, result: Result, hits: list[Hit]) -> str:
-        messages = self.prompt_builder(result.query, hits, result.meta)
+    def _format_prompt(self, result: Result, hits: list[Hit], prompt_builder: Callable) -> str:
+        messages = prompt_builder(result.query, hits, result.meta)
         return self.tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
         )
 
-    def generate(self, results: list[Result], contexts: dict[str, list[Hit]]) -> dict[str, str]:
+    def generate(
+        self,
+        results: list[Result],
+        contexts: dict[str, list[Hit]],
+        prompt_builder: Callable,
+    ) -> dict[str, str]:
         prompts = {
-            r.qid: self._format_prompt(r, contexts.get(r.qid, []))
+            r.qid: self._format_prompt(r, contexts.get(r.qid, []), prompt_builder)
             for r in results
         }
         return self.loop.run_until_complete(self._agenerate(prompts))
 
     async def _agenerate(self, prompts: dict[str, str]) -> dict[str, str]:
         request_ids = {qid: str(uuid.uuid4()) for qid in prompts}
-        iterators = {
+        output_iterators = {
             qid: await self.engine.add_request(request_ids[qid], prompt, self.sampling_params)
             for qid, prompt in prompts.items()
         }
         outputs = await asyncio.gather(*[
-            self._collect(qid, it) for qid, it in iterators.items()
+            self._collect(qid, it) for qid, it in output_iterators.items()
         ])
         return dict(outputs)
 

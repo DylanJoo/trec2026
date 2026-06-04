@@ -1,32 +1,16 @@
-pipeline: sequential          # direct | sequential | parallel | optimal
-
 data:
   queries_path: data/ragtime/topics/queries_unified.jsonl
-  corpus_path: data/ragtime/corpus/corpus_unified.jsonl
-  nugget_qrel_pattern: data/ragtime/nuggets/{qid}.qrel  # optimal mode only
-
-retriever:
-  - name: bm25_multilingual
-    run_path: data/ragtime/runs/bm25.trec
-    topk: 100
+  corpus_path: data/ragtime/corpus/corpus.jsonl
+  nugget_qrels_template: data/ragtime/qrels/{qid}.txt
+  responses_path: outputs/ragtime/responses.jsonl
 
 generator:
   model_name_or_path: meta-llama/Llama-3.1-8B-Instruct
   track: ragtime
   temperature: 0.0
   top_p: 1.0
-  max_tokens: 1024          # Reports are longer (2K–10K chars)
+  max_tokens: 1024
   dtype: bfloat16
   gpu_memory_utilization: 0.9
   num_gpus: 1
   max_model_len: 12288
-
-selector:
-  type: top_k
-  k: 10                    # Reports cite more sources than QA answers
-  nugget_qrel_path: null
-
-rrf_k: 60
-
-output:
-  path: outputs/ragtime/responses.jsonl

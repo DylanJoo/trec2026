@@ -1,14 +1,6 @@
-pipeline: sequential          # direct | sequential | parallel | optimal
-
 data:
   queries_path: data/biogen/topics/queries_unified.jsonl
-  corpus_path: data/biogen/corpus/corpus_unified.jsonl
-  nugget_qrel_pattern: data/biogen/nuggets/{qid}.qrel  # optimal mode only
-
-retriever:
-  - name: bm25_pubmed
-    run_path: data/biogen/runs/bm25.trec
-    topk: 100
+  responses_path: outputs/biogen/responses.jsonl
 
 generator:
   model_name_or_path: meta-llama/Llama-3.1-8B-Instruct
@@ -20,13 +12,3 @@ generator:
   gpu_memory_utilization: 0.9
   num_gpus: 1
   max_model_len: 10240
-
-selector:
-  type: top_k
-  k: 3                     # BioGen answers are shorter; fewer abstracts needed
-  nugget_qrel_path: null
-
-rrf_k: 60
-
-output:
-  path: outputs/biogen/responses.jsonl

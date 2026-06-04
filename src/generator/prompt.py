@@ -1,13 +1,3 @@
-"""
-Per-track prompt builders.
-
-A prompt builder is a callable:
-  build(query: str, hits: list[Hit], meta: dict) -> str
-
-where the returned string is already formatted as a chat-template input
-(system+user turn, ready to pass to tokenizer.apply_chat_template).
-"""
-
 from dataclasses import dataclass, field
 from typing import Callable
 from src.data import Hit
