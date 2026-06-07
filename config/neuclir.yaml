@@ -1,0 +1,29 @@
+exp:
+  exp_name: test
+  context_path: outputs/neuclir/{exp_name}/context.run
+  response_path: outputs/neuclir/{exp_name}/response.jsonl
+
+data:
+  queries_path: data/neuclir2024.topics.test.jsonl
+  corpus_dir: data/corpus/neuclir1
+  nugget_qrels_path: data/neuclir/neuclir24-all-request.qrel
+
+retriever:
+  topk: 100
+
+reranker:
+  method: lancer
+
+selector:
+  topk: 10
+
+generator:
+  model_name_or_path: meta-llama/Llama-3.1-8B-Instruct
+  mode: endpoint
+  base_url: http://localhost:8000/v1
+  api_key: EMPTY
+  track: neuclir
+  temperature: 0.0
+  top_p: 1.0
+  max_tokens: 1024
+  max_model_len: 10240

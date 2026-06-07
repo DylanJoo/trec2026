@@ -1,16 +1,30 @@
+exp:
+  exp_name: test
+  context_path: outputs/ragtime/{exp_name}/context.run
+  response_path: outputs/ragtime/{exp_name}/response.jsonl
+
 data:
-  queries_path: data/ragtime/topics/queries_unified.jsonl
+  queries_path: data/ragtime/queries_unified.jsonl
   corpus_path: data/ragtime/corpus/corpus.jsonl
-  nugget_qrels_template: data/ragtime/qrels/{qid}.txt
-  responses_path: outputs/ragtime/responses.jsonl
+  run_path: data/ragtime/runs/run.txt
+  nugget_qrels_path: data/ragtime/qrels
+
+retriever:
+  topk: 100
+
+selector:
+  topk: 5
+
+reranker:
+  method: lancer
 
 generator:
   model_name_or_path: meta-llama/Llama-3.1-8B-Instruct
+  mode: endpoint
+  base_url: http://localhost:8000/v1
+  api_key: EMPTY
   track: ragtime
   temperature: 0.0
   top_p: 1.0
   max_tokens: 1024
-  dtype: bfloat16
-  gpu_memory_utilization: 0.9
-  num_gpus: 1
-  max_model_len: 12288
+  max_model_len: 10240

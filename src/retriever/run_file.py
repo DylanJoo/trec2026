@@ -20,9 +20,10 @@ class RunFileRetriever(BaseRetriever):
                     docid=docid,
                     score=score,
                     rank=rank,
-                    content=doc.get("text", "") if isinstance(doc, dict) else doc,
-                    title=doc.get("title", "") if isinstance(doc, dict) else "",
-                    meta=doc.get("meta", {}) if isinstance(doc, dict) else {},
+                    content_dict={
+                        "text": doc.get("text", "") if isinstance(doc, dict) else doc,
+                        "title": doc.get("title", "") if isinstance(doc, dict) else "",
+                    },
                 ))
             results[qid] = Result(qid=qid, query=q["query"], hits=hits)
         return results

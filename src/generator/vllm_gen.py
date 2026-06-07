@@ -28,6 +28,7 @@ class VLLMGenerator(BaseGenerator):
             dtype=dtype,
             tensor_parallel_size=num_gpus,
             gpu_memory_utilization=gpu_memory_utilization,
+            enforce_eager=True,
             max_model_len=max_model_len,
         )
         self.engine = AsyncLLMEngine.from_engine_args(args)

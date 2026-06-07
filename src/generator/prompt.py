@@ -64,7 +64,7 @@ def build_ragtime_prompt(query: str, hits: list[Hit], meta: dict) -> list[dict]:
     report_length = meta.get("report_length", 2000)
 
     docs = "\n\n".join(
-        f"[{i+1}] ({h.meta.get('lang', '?')}) {h.title + ': ' if h.title else ''}{h.content}"
+        f"[{i+1}] {h.title + ': ' if h.title else ''}{h.content}"
         for i, h in enumerate(hits)
     )
     user_content = ""
@@ -81,6 +81,40 @@ def build_ragtime_prompt(query: str, hits: list[Hit], meta: dict) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# TREC NeuCLIR 2024/2025
+# Task: generate a focused report from multilingual retrieved documents
+# Output: ~2000 char report (controlled by meta["limit"]) with inline citations
+# ---------------------------------------------------------------------------
+
+NEUCLIR_SYSTEM = (
+    "You are a research analyst. Write a well-structured, focused report that directly "
+    "addresses the information need. Use only the provided documents as sources. "
+    "Cite each document as [N] after the sentence it supports. "
+    "Stay narrowly on the topic as described — do not include tangential information."
+)
+
+def build_neuclir_prompt(query: str, hits: list[Hit], meta: dict) -> list[dict]:
+    background = meta.get("background", "")
+    limit = meta.get("limit", 2000)
+
+    docs = "\n\n".join(
+        f"[{i+1}] {h.title + ': ' if h.title else ''}{h.content}"
+        for i, h in enumerate(hits)
+    )
+    user_content = ""
+    if background:
+        user_content += f"Background: {background}\n\n"
+    user_content += f"Documents:\n{docs}\n\n"
+    user_content += f"Report request: {query}\n\n"
+    user_content += f"Write a report of approximately {limit} characters:\n"
+
+    return [
+        {"role": "system", "content": NEUCLIR_SYSTEM},
+        {"role": "user", "content": user_content},
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
@@ -88,6 +122,7 @@ PROMPT_BUILDERS: dict[str, Callable] = {
     "rag":     build_rag_prompt,
     "biogen":  build_biogen_prompt,
     "ragtime": build_ragtime_prompt,
+    "neuclir": build_neuclir_prompt,
 }
 
 def get_prompt_builder(track: str) -> Callable:

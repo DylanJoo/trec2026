@@ -1,6 +1,18 @@
+exp:
+  exp_name: test
+  context_path: outputs/rag2024/{exp_name}/context.run
+  response_path: outputs/rag2024/{exp_name}/response.jsonl
+
 data:
   queries_path: data/rag2024/topics/queries_unified.jsonl
-  responses_path: outputs/rag2024/responses.jsonl
+  corpus_path: data/rag2024/corpus/corpus.jsonl
+  run_path: data/rag2024/runs/run.txt
+
+retriever:
+  topk: 100
+
+selector:
+  topk: 5
 
 generator:
   model_name_or_path: meta-llama/Llama-3.1-8B-Instruct

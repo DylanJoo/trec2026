@@ -1,6 +1,18 @@
+exp:
+  exp_name: test
+  context_path: outputs/biogen/{exp_name}/context.run
+  response_path: outputs/biogen/{exp_name}/response.jsonl
+
 data:
   queries_path: data/biogen/topics/queries_unified.jsonl
-  responses_path: outputs/biogen/responses.jsonl
+  corpus_path: data/biogen/corpus/corpus.jsonl
+  run_path: data/biogen/runs/run.txt
+
+retriever:
+  topk: 100
+
+selector:
+  topk: 5
 
 generator:
   model_name_or_path: meta-llama/Llama-3.1-8B-Instruct
