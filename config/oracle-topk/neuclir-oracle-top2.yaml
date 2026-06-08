@@ -8,12 +8,6 @@ data:
   corpus_path: data/neuclir/neuclir24-relevant-docs.jsonl
   nugget_qrels_path: data/neuclir/neuclir24-test-request.qrel
 
-retriever:
-  topk: 100
-
-reranker:
-  method: lancer
-
 selector:
   topk: 2
 

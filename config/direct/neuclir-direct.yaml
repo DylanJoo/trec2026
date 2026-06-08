@@ -1,5 +1,5 @@
 exp:
-  exp_name: oracle-top3
+  exp_name: direct
   context_path: outputs/neuclir/{exp_name}/context.run
   response_path: outputs/neuclir/{exp_name}/response.jsonl
 
@@ -9,7 +9,7 @@ data:
   nugget_qrels_path: data/neuclir/neuclir24-test-request.qrel
 
 selector:
-  topk: 3
+  topk: null
 
 generator:
   model_name_or_path: google/gemma-3-27b-it
