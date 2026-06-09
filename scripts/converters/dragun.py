@@ -1,15 +1,10 @@
 """
-Convert TREC RAGTIME 2025 native formats to unified pipeline format.
+Convert TREC DRAGUN 2025 native formats to unified pipeline format.
 
-RAGTIME corpus (multilingual news JSONL, AR/ZH/EN/RU):
-  {"docid": "...", "title": "...", "text": "...", "lang": "ar"|"zh"|"en"|"ru", "date": "..."}
+DRAGUN topics (JSONL):
+  {"topic_id": "...", "article_title": "...", "article_text": "...", "source": "..."}
 
-RAGTIME topics (JSONL):
-  {"topic_id": "...", "request_id": "...", "collection_id": "ragtime/1/all",
-   "title": "...", "background": "...", "problem_statement": "...",
-   "limit": 2000 | 10000}
-
-RAGTIME response (JSONL):
+DRAGUN response (JSONL):
   {"run_id": "...", "topic_id": "...",
    "report": "Full report text with inline [doc_id] citations.",
    "citations": ["docid1", ...]}
@@ -19,32 +14,15 @@ import json
 import re
 
 
-def convert_corpus_line(line: str) -> str:
-    doc = json.loads(line)
-    unified = {
-        "docid": doc["docid"],
-        "title": doc.get("title", ""),
-        "text": doc.get("text", ""),
-        "url": doc.get("url", ""),
-        "meta": {
-            "lang": doc.get("lang", ""),
-            "date": doc.get("date", ""),
-        },
-    }
-    return json.dumps(unified)
-
-
 def convert_queries_line(line: str) -> str:
     q = json.loads(line)
     unified = {
         "qid": str(q["topic_id"]),
-        "query": q.get("problem_statement", ""),
+        "query": q.get("article_title", "") + " " + q.get("article_text", ""),
         "meta": {
-            "title": q.get("title", ""),
-            "background": q.get("background", ""),
-            "collection_id": q.get("collection_id", ""),
-            "limit": q.get("limit", 2000),
-            "track": "ragtime",
+            "article_title": q.get("article_title", ""),
+            "source": q.get("source", ""),
+            "track": "dragun",
         },
     }
     return json.dumps(unified)
@@ -71,9 +49,7 @@ def convert_file(input_path: str, output_path: str, mode: str):
             line = line.strip()
             if not line:
                 continue
-            if mode == "corpus":
-                fout.write(convert_corpus_line(line) + "\n")
-            elif mode == "queries":
+            if mode == "queries":
                 fout.write(convert_queries_line(line) + "\n")
             elif mode == "response":
                 fout.write(convert_response_line(line) + "\n")
@@ -82,7 +58,7 @@ def convert_file(input_path: str, output_path: str, mode: str):
 if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser()
-    p.add_argument("mode", choices=["corpus", "queries", "response"])
+    p.add_argument("mode", choices=["queries", "response"])
     p.add_argument("input")
     p.add_argument("output")
     args = p.parse_args()
