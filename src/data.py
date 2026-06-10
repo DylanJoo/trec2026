@@ -45,15 +45,13 @@ class Result:
     def top_k(self, k: int) -> list:
         return self.hits[:k]
 
-def truncate_hits(contexts: dict, max_model_len: int, n_docs: int, buffer: int = 100) -> None:
-    """Truncate each hit's text in-place so all docs fit within max_model_len chars.
-
-    Formula: max_chars_per_doc = max_model_len // n_docs - buffer
-    """
+def truncate_hits(results: dict, max_model_len: int, n_docs: int, buffer: int = 100) -> None:
+    """Truncate each hit's text in-place so all docs fit within max_model_len chars."""
     if n_docs <= 0 or max_model_len <= 0:
         return
     max_chars = max(0, max_model_len // n_docs - buffer) * 4
-    for hits in contexts.values():
+    for result in results.values():
+        hits = result.hits if hasattr(result, "hits") else result
         for hit in hits:
             text = hit["content_dict"].get("text", "")
             if len(text) > max_chars:

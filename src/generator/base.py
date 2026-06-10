@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Callable
-from src.data import Hit, Result
+from src.data import Result
 
 
 class BaseGenerator(ABC):
@@ -8,8 +8,7 @@ class BaseGenerator(ABC):
     @abstractmethod
     def generate(
         self,
-        results: list[Result],
-        contexts: dict[str, list[Hit]],
+        results: dict[str, Result],
         prompt_builder: Callable,
     ) -> dict[str, str]:
-        """Returns {qid: response_text}."""
+        """Returns {qid: response_text}. Uses result.hits as context documents."""

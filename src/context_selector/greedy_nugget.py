@@ -1,7 +1,26 @@
 import random
 
+from src.data import Hit, Result
 
-def greedy_budget(doc_nuggets: dict, topk: int = 5) -> dict:
+
+def _build_results(docids_per_qid: dict, queries: dict, corpus: dict) -> dict[str, Result]:
+    results = {}
+    for qid, docids in docids_per_qid.items():
+        hits = []
+        for rank, docid in enumerate(docids, start=1):
+            doc = corpus.get(docid, {})
+            hits.append(Hit(
+                docid=docid,
+                score=0.0,
+                rank=rank,
+                content_dict={"text": doc.get("content", ""), "title": doc.get("title", "")},
+            ))
+        q = queries.get(qid, {})
+        results[qid] = Result(qid=qid, query=q.get("query", ""), hits=hits, meta=q.get("meta", {}))
+    return results
+
+
+def greedy_budget(doc_nuggets: dict, queries: dict, corpus: dict, topk: int = 5) -> dict[str, Result]:
     """Deterministic setting. Select based on the gained nuggets."""
     selected = {}
 
@@ -24,20 +43,20 @@ def greedy_budget(doc_nuggets: dict, topk: int = 5) -> dict:
             selected[qid].append(best_docid)
             candidates.remove(best_docid)
 
-    return selected
+    return _build_results(selected, queries, corpus)
 
 
-def greedy_random(doc_nuggets: dict, topk: int = 5, seed: int = 42) -> dict:
+def greedy_random(doc_nuggets: dict, queries: dict, corpus: dict, topk: int = 5, seed: int = 42) -> dict[str, Result]:
     """Randomly sample topk docs per query."""
     rng = random.Random(seed)
     selected = {}
     for qid in doc_nuggets:
         pool = list(doc_nuggets[qid].keys())
         selected[qid] = rng.sample(pool, min(topk, len(pool)))
-    return selected
+    return _build_results(selected, queries, corpus)
 
 
-def greedy_complete(doc_nuggets: dict) -> dict:
+def greedy_complete(doc_nuggets: dict, queries: dict, corpus: dict) -> dict[str, Result]:
     """Greedily select docs per query until all nuggets are covered or no more gain."""
     selected = {}
 
@@ -61,7 +80,7 @@ def greedy_complete(doc_nuggets: dict) -> dict:
             selected[qid].append(best_docid)
             candidates.remove(best_docid)
 
-    return selected
+    return _build_results(selected, queries, corpus)
 
 
 # # -------------------------------------------------------------------------

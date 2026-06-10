@@ -1,6 +1,7 @@
 exp:
   exp_name: test
   context_path: outputs/neuclir/{exp_name}/context.run
+  rerank_path: outputs/neuclir/{exp_name}/rerank.run
   response_path: outputs/neuclir/{exp_name}/response.jsonl
 
 data:

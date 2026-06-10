@@ -1,27 +1,19 @@
 exp:
-  exp_name: test
+  exp_name: direct
   context_path: outputs/ragtime/{exp_name}/context.run
-  rerank_path: outputs/ragtime/{exp_name}/rerank.run
   response_path: outputs/ragtime/{exp_name}/response.jsonl
 
 data:
   queries_path: data/ragtime/queries_unified.jsonl
   corpus_path: data/ragtime/corpus/corpus.jsonl
-  run_path: data/ragtime/runs/run.txt
   nugget_qrels_path: data/ragtime/qrels
 
-retriever:
-  topk: 100
-
 selector:
-  topk: 5
-
-reranker:
-  method: lancer
+  topk: null
 
 generator:
   model_name_or_path: google/gemma-3-27b-it
-  mode: endpoint
+  mode: vllm
   base_url: http://localhost:8000/v1
   api_key: EMPTY
   track: ragtime

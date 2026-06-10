@@ -1,0 +1,26 @@
+data:
+  queries_path: data/neuclir2024.topics.test.jsonl
+  corpus_path: /home/dju/scratch/neuclir1/*processed.json.gz
+
+exp:
+  context_path: outputs/neuclir/{exp_name}/context.run
+  exp_name: cover-top7
+  response_path: outputs/neuclir/{exp_name}/response.jsonl
+
+retriever:
+  run_path: runs/runs.neuclir2024.cover.test.txt
+  topk: 1000
+
+selector:
+  topk: 7
+
+generator:
+  api_key: EMPTY
+  base_url: http://localhost:8000/v1
+  max_model_len: 51200
+  max_tokens: 1024
+  mode: vllm
+  model_name_or_path: google/gemma-3-27b-it
+  temperature: 0.0
+  top_p: 1.0
+  track: neuclir

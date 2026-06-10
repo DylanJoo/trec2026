@@ -5,7 +5,7 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.sampling_params import SamplingParams
 from transformers import AutoTokenizer
-from src.data import Hit, Result
+from src.data import Result, Hit
 from src.generator.base import BaseGenerator
 
 
@@ -55,13 +55,12 @@ class VLLMGenerator(BaseGenerator):
 
     def generate(
         self,
-        results: list[Result],
-        contexts: dict[str, list[Hit]],
+        results: dict[str, Result],
         prompt_builder: Callable,
     ) -> dict[str, str]:
         prompts = {
-            r.qid: self._format_prompt(r, contexts.get(r.qid, []), prompt_builder)
-            for r in results
+            r.qid: self._format_prompt(r, r.hits, prompt_builder)
+            for r in results.values()
         }
         return self.loop.run_until_complete(self._agenerate(prompts))
 

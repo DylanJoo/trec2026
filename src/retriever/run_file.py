@@ -25,5 +25,5 @@ class RunFileRetriever(BaseRetriever):
                         "title": doc.get("title", "") if isinstance(doc, dict) else "",
                     },
                 ))
-            results[qid] = Result(qid=qid, query=q["query"], hits=hits)
+            results[qid] = Result(qid=qid, query=q["query"], hits=hits, meta=q.get("meta", {}))
         return results
