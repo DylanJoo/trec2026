@@ -14,30 +14,10 @@ source ${HOME}/.bashrc
 initconda
 conda activate vllm
 
-OVERALL_STATUS=0
+cd ${HOME}/trec2026
 
-for TRACK in \
-    neuclir \
-    ragtime \
-    ; do
-
-    # oracle topk
-    for CONFIG in config/oracle-topk/${TRACK}-oracle-top*.yaml; do
-        echo "[$(date)] === config=${CONFIG} ==="
-        python run_oracle.py "$CONFIG"
-        STATUS=$?
-        [ $STATUS -ne 0 ] && OVERALL_STATUS=$STATUS
-        echo "[$(date)] === done ${CONFIG} (exit ${STATUS}) ==="
-    done
-
-    # oracle complete
-    CONFIG=config/oracle-complete/${TRACK}-oracle-complete.yaml
-    echo "[$(date)] === config=${CONFIG} ==="
-    python run_oracle.py "$CONFIG"
-    STATUS=$?
-    [ $STATUS -ne 0 ] && OVERALL_STATUS=$STATUS
-    echo "[$(date)] === done ${CONFIG} (exit ${STATUS}) ==="
-
-done
-
-exit $OVERALL_STATUS
+TRACK=neuclir
+CONFIG=config/oracle-complete/${TRACK}-oracle-complete.yaml
+echo "[$(date)] === config=${CONFIG} ==="
+python run_oracle.py "$CONFIG"
+echo "[$(date)] === done ${CONFIG} ==="

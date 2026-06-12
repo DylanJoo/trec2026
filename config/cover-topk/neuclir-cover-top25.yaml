@@ -1,11 +1,11 @@
+exp:
+  exp_name: cover-top25
+  context_path: outputs/neuclir/{exp_name}/context.run
+  response_path: outputs/neuclir/{exp_name}/response.jsonl
+
 data:
   queries_path: data/neuclir2024.topics.test.jsonl
-  corpus_path: /home/dju/scratch/neuclir1/*processed.json.gz
-
-exp:
-  context_path: outputs/neuclir/{exp_name}/context.run
-  exp_name: cover-top25
-  response_path: outputs/neuclir/{exp_name}/response.jsonl
+  corpus_path: /home/dju/scratch/neuclir1/*processed.jsonl.gz
 
 retriever:
   run_path: runs/runs.neuclir2024.cover.test.txt

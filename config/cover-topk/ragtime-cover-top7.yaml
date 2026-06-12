@@ -1,12 +1,20 @@
+exp:
+  exp_name: cover-top7
+  context_path: outputs/ragtime/{exp_name}/context.run
+  response_path: outputs/ragtime/{exp_name}/response.jsonl
+
 data:
   corpus_path: data/ragtime/ragtime25-relevant-docs.jsonl
   nugget_qrels_path: data/ragtime/2025.mlir.qrels
   queries_path: data/ragtime2025.topics.test.jsonl
   run_path: runs/runs.ragtime2025.cover.test.txt
-exp:
-  context_path: outputs/ragtime/{exp_name}/context.run
-  exp_name: cover-top7
-  response_path: outputs/ragtime/{exp_name}/response.jsonl
+
+retriever:
+  topk: 100
+
+selector:
+  topk: 7
+
 generator:
   api_key: EMPTY
   base_url: http://localhost:8000/v1
@@ -17,7 +25,3 @@ generator:
   temperature: 0.0
   top_p: 1.0
   track: ragtime
-retriever:
-  topk: 100
-selector:
-  topk: 7

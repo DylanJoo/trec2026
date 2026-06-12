@@ -1,7 +1,7 @@
-"""Oracle generation: context built from ground-truth relevant docs in nugget qrels.
+"""Direct generation: no retrieval, pass empty context.
 
 Example usage:
-  python run_oracle.py config/ragtime.yaml
+  python run_direct.py config/ragtime.yaml
 """
 import json
 import os
@@ -10,40 +10,31 @@ import sys
 import torch
 import yaml
 
-from src.data import load_queries, load_corpus, truncate_hits, load_nugget_qrels
-from src.context_selector.greedy_nugget import greedy_budget, greedy_complete
 from src.generator import VLLMGenerator, EndpointGenerator
 from src.generator.prompt import get_prompt_builder
+from src.data import Result, load_queries
 
+# Load configurations
 with open(sys.argv[1]) as f:
     cfg = yaml.safe_load(f)
 
 data_cfg = cfg["data"]
 gen_cfg = cfg["generator"]
-sel_cfg = cfg["selector"]
 exp_cfg = cfg["exp"]
 
 exp_name = exp_cfg["exp_name"]
-context_path = exp_cfg["context_path"].format(exp_name=exp_name)
 output_path = exp_cfg["response_path"].format(exp_name=exp_name)
 mode = gen_cfg.get("mode", "vllm")
 
-# Load data
+# Input preparation
 queries = load_queries(data_cfg["queries_path"])
-corpus = load_corpus(data_cfg["corpus_path"])
-doc_nuggets = load_nugget_qrels(data_cfg["nugget_qrels_path"])
 
-# Selection
-if sel_cfg["topk"] == 0:
-    results = greedy_complete(doc_nuggets, queries, corpus)
-else:
-    results = greedy_budget(doc_nuggets, queries, corpus, topk=sel_cfg["topk"])
-
-# Truncate document text to fit within model context
-truncate_hits(results, max_model_len=gen_cfg.get("max_model_len", 10240), n_docs=sel_cfg["topk"])
+# Retrieval-augmented Context
+result_list = [Result(qid=qid, query=q["query"], meta=q.get("meta", {})) for qid, q in queries.items()]
+contexts = {r.qid: [] for r in result_list}
 
 # Generation
-if gen_cfg["mode"] == "endpoint":
+if mode == "endpoint":
     generator = EndpointGenerator(
         gen_cfg["model_name_or_path"],
         temperature=gen_cfg.get("temperature", 0.0),
@@ -65,19 +56,11 @@ else:
     )
 
 prompt_builder = get_prompt_builder(gen_cfg.get("track", "rag"))
-responses = generator.generate(results, prompt_builder=prompt_builder)
+responses = generator.generate(result_list, contexts, prompt_builder=prompt_builder)
 
-# Write responses
+# Write
 os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 with open(output_path, "w") as f:
     for qid, text in responses.items():
         f.write(json.dumps({"qid": qid, "response": text}) + "\n")
 print(f"Wrote {len(responses)} responses to {output_path}")
-
-# Write TREC context run
-os.makedirs(os.path.dirname(context_path) or ".", exist_ok=True)
-with open(context_path, "w") as f:
-    for qid, result in results.items():
-        for hit in result.hits:
-            f.write(f"{qid} Q0 {hit.docid} {hit.rank} {hit.score} oracle\n")
-print(f"Wrote TREC run to {context_path}")
