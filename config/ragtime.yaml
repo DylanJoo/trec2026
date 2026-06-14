@@ -1,7 +1,6 @@
 exp:
   exp_name: test
   context_path: outputs/ragtime/{exp_name}/context.run
-  rerank_path: outputs/ragtime/{exp_name}/rerank.run
   response_path: outputs/ragtime/{exp_name}/response.jsonl
 
 data:
@@ -15,9 +14,6 @@ retriever:
 
 selector:
   topk: 5
-
-reranker:
-  method: lancer
 
 generator:
   model_name_or_path: google/gemma-3-27b-it

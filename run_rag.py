@@ -1,4 +1,4 @@
-"""RAG pipeline: retrieval [+ reranking] + generation.
+"""RAG pipeline: retrieval + generation.
 
 Example usage:
   python run_rag.py config/ragtime.yaml
@@ -22,49 +22,24 @@ with open(sys.argv[1]) as f:
 data_cfg = cfg["data"]
 gen_cfg = cfg["generator"]
 retriever_cfg = cfg["retriever"]
-rerank_cfg = cfg.get("reranker", None)
 sel_cfg = cfg["selector"]
 exp_cfg = cfg["exp"]
 
 exp_name = exp_cfg["exp_name"]
 context_path = exp_cfg["context_path"].format(exp_name=exp_name)
 output_path = exp_cfg["response_path"].format(exp_name=exp_name)
-rerank_path = exp_cfg.get("rerank_path", "").format(exp_name=exp_name) if exp_cfg.get("rerank_path") else None
 mode = gen_cfg.get("mode", "vllm")
 
 # Load data
 queries = load_queries(data_cfg["queries_path"])
 corpus = load_corpus(data_cfg["corpus_path"])
 
-# Retrieval: first-stage
+# Retrieval or with reranking
 retriever = RunFileRetriever(
     run_path=retriever_cfg["run_path"],
     topk=retriever_cfg["topk"],
 )
 results = retriever.retrieve(queries, corpus)
-
-# Reranking (optional)
-if rerank_cfg:
-    from src.reranker import LLMReranker
-    model = gen_cfg["model_name_or_path"]
-    llm_cfg = rerank_cfg.get("llm") or (
-        {
-            "backend": "request",
-            "base_url": gen_cfg.get("base_url", "http://localhost:8000/v1"),
-            "api_key": gen_cfg.get("api_key", "EMPTY"),
-        }
-        if mode == "endpoint" else {}
-    )
-    reranker = LLMReranker(rerank_cfg["method"], model, depth=rerank_cfg.get("depth", 100), llm=llm_cfg)
-    results = reranker.rerank(results)
-
-    if rerank_path:
-        os.makedirs(os.path.dirname(rerank_path) or ".", exist_ok=True)
-        with open(rerank_path, "w") as f:
-            for qid, result in results.items():
-                for hit in result.hits:
-                    f.write(f"{qid} Q0 {hit.docid} {hit.rank} {hit.score} {exp_name}\n")
-        print(f"Wrote reranked run to {rerank_path}")
 
 # Context selection
 max_model_len = gen_cfg.get("max_model_len", 10240)

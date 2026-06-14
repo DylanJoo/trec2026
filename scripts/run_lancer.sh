@@ -1,52 +1,51 @@
-#!/bin/sh
-#SBATCH --job-name=lancer
+#!/bin/bash -l
+#SBATCH --job-name=rerank
+#SBATCH --output=logs/rerank.out
+#SBATCH --error=logs/rerank.err
 #SBATCH --partition=gpu
-#SBATCH --nodelist=rack7n05,rack8n05
-#SBATCH --gres=gpu:a100:2
-#SBATCH --cpus-per-task=64
-#SBATCH --mem=128G
-#SBATCH --nodes=1
-#SBATCH --time=12:00:00
-#SBATCH --output=%x.out
+#SBATCH --gres=gpu:nvidia_l40:4
+#SBATCH --ntasks-per-node=1
+#SBATCH --array=0
+#SBATCH --mem=64G
+#SBATCH --time=1-00:00:00
 
-module load anaconda3/2024.2
-conda activate ecir2026
+# ENV
+source ${HOME}/.bashrc
+initconda
+conda activate vllm
 
-MODEL=meta-llama/Llama-3.3-70B-Instruct
-NCCL_P2P_DISABLE=1 VLLM_SKIP_P2P_CHECK=1 vllm serve $MODEL \
-    --max-model-len 8192  \
-    --port 8000  \
-    --dtype bfloat16 \
-    --disable-custom-all-reduce \
-    --tensor-parallel-size 2 > vllm_server.log 2>&1 &
-PID=$!
+queries=(
+"data/neuclir2024.topics.test.jsonl"
+"data/ragtime2025.topics.test.jsonl"
+# "data/ragtime2026.topics.test.jsonl"
+)
+run_outputs=(
+"runs/runs.neuclir2024.cover.test.txt"
+"runs/runs.ragtime2025.cover.test.txt"
+# "runs/runs.ragtime2026.cover.test.txt"
+)
 
-# Wait until server responds
-echo "Waiting for vLLM server (PID=$PID) to start..."
-until curl -s http://localhost:8000/v1/models >/dev/null; do
-    echo "vLLM server not yet available, retrying in 10 seconds..."
-    sleep 10
+cd ${HOME}/trec2026
+
+for rerank in lancer lancer_expr;do
+for topk in 200 500; do
+    MODEL=meta-llama/Llama-3.3-70B-Instruct
+    INPUT_RUN=${HOME}/trec2026/runs/runs.neuclir2024.cover.test.txt
+    OUTPUT_RUN=${HOME}/trec2026/runs/runs.neuclir2024.cover.${rerank}-top${topk}.test.txt
+    OUTPUT_SQ=${HOME}/trec2026/runs/sq.neuclir2024.cover.${rerank}-top${topk}.test.jsonl
+
+    python3 -m autollmrerank.wrapper \
+        --config=$HOME/APRIL/src/autollmrerank/configs/${rerank}.yaml \
+        --llm.backend=vllm \
+        --data.loader_type=neuclir \
+        --data.input_run=${INPUT_RUN} \
+        --data.output_run=${OUTPUT_RUN} \
+        --data.output_subquestions=${OUTPUT_SQ} \
+        --data.topk=1000 \
+        --llm.model_name_or_path=$MODEL \
+        --num_runs=2 \
+        --top_k=$topk \
+        --rank_end=$topk \
+        --max_doc_length=1024
 done
-echo "vLLM server is up and running on port 8000."
-
-# for retrieval in bm25 lsr qwen3-embed-8b; do
-#     python src/run_cruxmds.py \
-#         --reranker lancer \
-#         --run_path data/crux-mds-duc04-runs/${retrieval}-crux-mds-duc04.run \
-#         --topic_path data/crux-mds-duc04.request.jsonl \
-#         --qg_path results/crux-mds-duc04-subquestions/qwen3-next-80b-a3b-instruct.json \
-#         --rerun_judge  \
-#         --n_subquestions 2 \
-#         --agg_method sum 
-# done
-
-for retrieval in bm25 lsr-milco qwen3-embed-8b; do
-    python src/run_neuclir.py \
-        --reranker lancer \
-        --run_path data/neuclir-runs/${retrieval}-neuclir.run \
-        --topic_path data/neuclir24-test-request.jsonl \
-        --qg_path results/neuclir-subquestions/llama3.3-70b-instruct.json \
-        --rerun_judge  \
-        --n_subquestions 2 \
-        --agg_method sum 
 done

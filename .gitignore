@@ -25,6 +25,7 @@ env/
 outputs/
 *.log
 /logs
+**/logs
 
 # Jupyter
 .ipynb_checkpoints/
