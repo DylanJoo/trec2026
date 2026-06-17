@@ -3,7 +3,7 @@
 #SBATCH --output=logs/rerank.out
 #SBATCH --error=logs/rerank.err
 #SBATCH --partition=gpu
-#SBATCH --gres=gpu:nvidia_l40:4
+#SBATCH --gres=gpu:nvidia_rtx_a6000:4
 #SBATCH --ntasks-per-node=1
 #SBATCH --array=0
 #SBATCH --mem=64G
@@ -28,7 +28,7 @@ run_outputs=(
 cd ${HOME}/trec2026
 
 for rerank in lancer lancer_expr;do
-for topk in 200 500; do
+for topk in 200; do
     MODEL=meta-llama/Llama-3.3-70B-Instruct
     INPUT_RUN=${HOME}/trec2026/runs/runs.neuclir2024.cover.test.txt
     OUTPUT_RUN=${HOME}/trec2026/runs/runs.neuclir2024.cover.${rerank}-top${topk}.test.txt

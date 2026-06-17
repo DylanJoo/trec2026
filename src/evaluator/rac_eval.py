@@ -8,7 +8,7 @@ import argparse
 import numpy as np
 from collections import defaultdict
 import ir_measures
-from ir_measures import Metric, MAP, nDCG, P, alpha_nDCG
+from ir_measures import Metric, MAP, nDCG, P, alpha_nDCG, StRecall
 import pandas as pd
 
 
@@ -52,32 +52,33 @@ def coverage_measures(ratings, ratings_oracle, filter_by_oracle=False, tau=3):
     return Metric(query_id='dummy', value=value, measure='Cov')
 
 
-def rac_eval(run, qrel, div_qrel, judge, tau=3, cutoff=10, filter_by_oracle=False):
+
+def rac_eval(run, qrel, div_qrel, judge, tau=3, filter_by_oracle=False):
     outputs = defaultdict(list)
 
-    for metric in ir_measures.iter_calc([nDCG@10, P@10], qrel, run):
-        outputs[metric.measure.NAME + "@10"].append(metric.value)
+    # for metric in ir_measures.iter_calc([nDCG@10, nDCG@20], qrel, run):
+    #     outputs[str(metric.measure)].append(metric.value)
 
-    for metric in ir_measures.iter_calc([alpha_nDCG@10], div_qrel, run):
-        outputs[metric.measure.NAME + "@10"].append(metric.value)
+    for metric in ir_measures.iter_calc([alpha_nDCG@10, alpha_nDCG@20, StRecall@10, StRecall@20], div_qrel, run):
+        outputs[str(metric.measure)].append(metric.value)
 
-    for qid in run:
-        ratings_oracle = np.max([judge[qid][docid] for docid in judge[qid]], 0)
-        empty = [0] * len(ratings_oracle)
-        ratings = np.max(
-            [judge[qid][docid] if docid in judge[qid] else empty for docid in run[qid]][:cutoff],
-            0
-        )
-        assert len(ratings) == len(ratings_oracle), \
-            f"Inconsistent ratings length: {len(ratings)} vs {len(ratings_oracle)}"
-
-        metric = coverage_measures(
-            ratings=ratings,
-            ratings_oracle=ratings_oracle,
-            filter_by_oracle=filter_by_oracle,
-            tau=tau,
-        )
-        outputs[metric.measure + "@10"].append(float(metric.value))
+    # for qid in run:
+    #     ratings_oracle = np.max([judge[qid][docid] for docid in judge[qid]], 0)
+    #     empty = [0] * len(ratings_oracle)
+    #     ratings = np.max(
+    #         [judge[qid][docid] if docid in judge[qid] else empty for docid in run[qid]][:cutoff],
+    #         0
+    #     )
+    #     assert len(ratings) == len(ratings_oracle), \
+    #         f"Inconsistent ratings length: {len(ratings)} vs {len(ratings_oracle)}"
+    #
+    #     metric = coverage_measures(
+    #         ratings=ratings,
+    #         ratings_oracle=ratings_oracle,
+    #         filter_by_oracle=filter_by_oracle,
+    #         tau=tau,
+    #     )
+    #     outputs[f"Cov@{cutoff}"].append(float(metric.value))
 
     return outputs
 
@@ -89,11 +90,10 @@ if __name__ == "__main__":
     parser.add_argument("--judge", type=str, required=True,
                         help="jsonl: {'id': str, 'docid': str, 'rating': List[int]}")
     parser.add_argument("--filter_by_oracle", action="store_true", default=False)
-    parser.add_argument("--cutoff", type=int, default=10)
     parser.add_argument("--tau", type=int, default=3)
     args = parser.parse_args()
 
-    run = load_run_or_qrel(args.run, topk=args.cutoff)
+    run = load_run_or_qrel(args.run, topk=1000)
     qrel = load_run_or_qrel(args.qrel, threshold=1)
     div_qrel = load_diversity_qrel(args.qrel)
     ratings = load_ratings(args.judge)
@@ -110,7 +110,6 @@ if __name__ == "__main__":
         div_qrel=div_qrel,
         judge=ratings,
         tau=args.tau,
-        cutoff=args.cutoff,
         filter_by_oracle=args.filter_by_oracle,
     )
 

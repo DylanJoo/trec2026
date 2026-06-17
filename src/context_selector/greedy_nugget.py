@@ -11,7 +11,7 @@ def _build_results(docids_per_qid: dict, queries: dict, corpus: dict) -> dict[st
             doc = corpus.get(docid, {})
             hits.append(Hit(
                 docid=docid,
-                score=0.0,
+                score=1/rank, 
                 rank=rank,
                 content_dict={"text": doc.get("content", ""), "title": doc.get("title", "")},
             ))
